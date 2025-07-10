@@ -39,7 +39,7 @@ def extract_pdf_values():
     pattern = re.compile(
         r"(?P<ID>K[A-Z0-9]{3})?\s*"  # TODO - some station IDs are malformed in the source PDFS. E.g. - KCP..WolfCreekPass & etc...
         r".*?"  # Match everything in between
-        r"(?P<Station_Type>AWOS-\dP?T?|ASOS)"  # TODO - Are there any other permutations in other states?
+        r"(?P<Station_Type>ASOS|AWOS-(?:1|2|3P?T?|AV))"  # Matches ASOS, AWOS-1, AWOS-2, AWOS-3, AWOS-3P, AWOS-3PT, and AWOS-AV.
     )
 
     all_records = []

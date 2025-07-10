@@ -33,8 +33,8 @@ Refer to `pyproject.toml` for script details.
 ## Warnings
 
 1. The data in the PDFs appears to be incomplete or malformed in some cases. E.g. Station ID's are truncated like `KCP..` for the Wolf Creek Pass station in Colorado.
-2. This has only been tested on Colorado data. There may be data permutations in other States or Territories that this doesn't properly handle.
+2. This has only been tested on Colorado & California data. There may be data permutations in other States or Territories that this doesn't properly handle.
 
 Until the data source improves, the data will need to be manually verified.
 
-Ideally, the FAA would provide this data in a clean format. If not, we could try to set up a webscraper frontend to fetch the PDFs & extract the data on a regular interval.
+Ideally, the FAA would provide this data in a clean format. If not, we could try to set up a webscraper like selenium or cypress to fetch the PDFs & extract the data on a regular interval.
