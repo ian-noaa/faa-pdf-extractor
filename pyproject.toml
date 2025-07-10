@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-exract_pdfs = "pdf.read_pdf:extract_pdf_values"
+extract_pdfs = "pdf.read_pdf:extract_pdf_values"
 
 [build-system]
 requires = ["hatchling"]
