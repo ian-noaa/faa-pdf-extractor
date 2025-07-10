@@ -10,8 +10,37 @@ dependencies = [
 ]
 
 [project.scripts]
-pdf = "pdf.read_pdf:extract_pdf_values"
+exract_pdfs = "pdf.read_pdf:extract_pdf_values"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.2",
+]
+
+[tool.ruff]
+# Dirs that contain third party example scripts and other languages
+# output-format="pylint"
+
+
+# For a list of available rules, see: https://docs.astral.sh/ruff/rules/
+lint.select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "UP", # pyupgrade
+    "I", # isort
+    "PTH", # flake8-use-pathlib
+    "PT", # flake8-pytest-style
+    "B", # bugbear
+    "SIM", # flake8-simplify
+    "LOG", # flake8-logging
+]
+
+lint.ignore = [
+    "E501", # Supress line-too-long warnings: trust the formatter's judgement on this one.
+    "W505", # Supress line-too-long warnings: trust the formatter's judgement on this one.
+]

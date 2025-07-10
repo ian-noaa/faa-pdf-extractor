@@ -1,68 +1,102 @@
-import pdfplumber
-import pandas as pd
 import argparse
 import re
+from pathlib import Path
+
+import pandas as pd
+import pdfplumber
+
 
 def extract_pdf_values():
-    parser = argparse.ArgumentParser(description="Extract weather station data from a PDF.")
-    parser.add_argument("--pdf_path", required=True, help="Path to the PDF file")
+    parser = argparse.ArgumentParser(
+        description="Extract weather station data from PDF files."
+    )
+    parser.add_argument(
+        "--pdf_dir", required=True, help="Path to the directory containing PDF files"
+    )
+    parser.add_argument(
+        "--output_csv", required=True, help="Path to the output CSV file"
+    )
     args = parser.parse_args()
 
-    pdf_path = args.pdf_path
+    pdf_dir = Path(args.pdf_dir)
+    output_csv = Path(args.output_csv)
 
-    # We'll collect structured rows from here
-    lines = []
+    # Check if directory exists
+    if not pdf_dir.exists() or not pdf_dir.is_dir():
+        print(f"Error: Directory {pdf_dir} does not exist or is not a directory")
+        return
 
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            # Extract the raw text and split into lines
-            text = page.extract_text()
-            if text:
-                lines.extend(text.split('\n'))
+    # Find all PDF files in the directory
+    pdf_files = list(pdf_dir.glob("*.pdf"))
 
-    # Display first 30 lines to analyze structure and line joining needs
-    # print(lines[:30])
+    if not pdf_files:
+        print(f"No PDF files found in directory {pdf_dir}")
+        return
 
-    # Define pattern to match each line
+    print(f"Found {len(pdf_files)} PDF files to process")
+
+    # Define pattern to match each line - only extract ID and Type
     pattern = re.compile(
-        r"(?P<ID>K[A-Z0-9]{3})?\s*"
-        r"(?P<LocationCountyState>.*?)\s+"
-        r"Colorado\s+"
-        r"(?P<Frequency>[A-Z\-\/.\d\s]+)\s+"
-        r"\((?P<AreaCode>\d{3})\)\s(?P<PhoneNumber>\d{3}-\d{4})\s+"
-        r"(?P<Type>AWOS-\dP?T?|ASOS)"
+        r"(?P<ID>K[A-Z0-9]{3})?\s*"  # TODO - some station IDs are malformed in the source PDFS. E.g. - KCP..WolfCreekPass & etc...
+        r".*?"  # Match everything in between
+        r"(?P<Station_Type>AWOS-\dP?T?|ASOS)"  # TODO - Are there any other permutations in other states?
     )
 
-    records = []
+    all_records = []
 
-    for line in lines:
-        match = pattern.search(line)
-        if match:
-            id_ = match.group("ID") or ""
-            loc_county_state = match.group("LocationCountyState").strip()
-            # Split into location and county by assuming last two words before 'Colorado' are county
-            parts = loc_county_state.split()
-            if len(parts) >= 2:
-                county = parts[-1]
-                location = " ".join(parts[:-1])
-            else:
-                location = loc_county_state
-                county = ""
+    # Process each PDF file
+    for pdf_file in pdf_files:
+        print(f"Processing: {pdf_file.name}")
 
-            # Assemble the row
-            records.append({
-                "ID": id_.strip(),
-                "Location": location.strip(),
-                "County": county.strip(),
-                "State": "Colorado",
-                "Frequency": match.group("Frequency").strip(),
-                "Phone": f"({match.group('AreaCode')}) {match.group('PhoneNumber')}",
-                "Type": match.group("Type").strip()
-            })
+        # We'll collect structured rows from here
+        lines = []
 
-    # Create DataFrame
-    df_clean = pd.DataFrame(records)
-    print(df_clean)
+        try:
+            with pdfplumber.open(pdf_file) as pdf:
+                for page in pdf.pages:
+                    # Extract the raw text and split into lines
+                    text = page.extract_text()
+                    if text:
+                        lines.extend(text.split("\n"))
+
+            # Process lines from this PDF
+            for line in lines:
+                match = pattern.search(line)
+                if match:
+                    station_id = match.group("ID") or ""
+                    station_type = match.group("Station_Type").strip()
+
+                    # Only include records that have both ID and Type
+                    if station_id and station_type:
+                        all_records.append(
+                            {
+                                "Station_ID": station_id.strip(),
+                                "Station_Type": station_type,
+                                "Source_File": pdf_file.name,
+                            }
+                        )
+
+        except Exception as e:
+            print(f"Error processing {pdf_file.name}: {e}")
+            continue
+
+    # Create DataFrame from all records
+    df_clean = pd.DataFrame(all_records)
+
+    if df_clean.empty:
+        print("No weather station data found in any PDF files")
+        return
+
+    # Remove duplicates based on Station_ID (keep first occurrence)
+    df_clean = df_clean.drop_duplicates(subset=["Station_ID"], keep="first")
+
+    print(f"Total records found: {len(df_clean)}")
+    print(df_clean.head())
+
+    # Save to CSV
+    df_clean.to_csv(output_csv, index=False)
+    print(f"Results saved to: {output_csv}")
+
 
 if __name__ == "__main__":
     extract_pdf_values()
